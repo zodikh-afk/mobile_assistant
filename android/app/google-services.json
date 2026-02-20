@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "3759162813",
+    "project_id": "mobile-assistant-94649",
+    "storage_bucket": "mobile-assistant-94649.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:3759162813:android:8ed070d607113148c4fed4",
+        "android_client_info": {
+          "package_name": "com.example.mobile_assistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARsC6othPnqXhLdTWHsn3RoI9K7uu2q80"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
