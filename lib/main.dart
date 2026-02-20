@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Імпорт ядра Firebase
 import 'screens/register_screen.dart'; // Твій файл з реєстрацією
+import 'screens/login_screen.dart';
 
 void main() async {
-  // 1. Це обов'язковий рядок для ініціалізації плагінів
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 2. Ініціалізація Firebase
-  
   await Firebase.initializeApp();
-  
   runApp(const MyApp());
 }
 
@@ -25,7 +21,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true, // Сучасний дизайн Android
       ),
       // Вказуємо екран реєстрації як стартовий
-      home: RegisterScreen(), 
+      home: const LoginScreen(), 
     );
   }
 }

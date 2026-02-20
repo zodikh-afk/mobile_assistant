@@ -5,7 +5,6 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Реєстрація користувача
   Future<String?> registerUser({
     required String email,
     required String password,
@@ -31,7 +30,22 @@ class AuthService {
       }
       return "Успіх";
     } catch (e) {
-      return e.toString(); // Повертаємо помилку, якщо щось пішло не так
+      return e.toString(); 
+    }
+  }
+  Future<String?> loginUser({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      // Firebase сам перевіряє, чи співпадають пошта і пароль
+      await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      return "Успіх";
+    } catch (e) {
+      return e.toString(); // Наприклад: "wrong-password" або "user-not-found"
     }
   }
 }
