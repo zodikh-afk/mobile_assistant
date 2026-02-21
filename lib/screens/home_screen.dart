@@ -1,39 +1,56 @@
 import 'package:flutter/material.dart';
+import '../services/ai_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final AIService _aiService = AIService();
+  final TextEditingController _controller = TextEditingController();
+  String _aiResponse = "Напиши мені щось!";
+  bool _isLoading = false;
+
+  void _askGemini() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final response = await _aiService.getResponse(_controller.text);
+
+    setState(() {
+      _aiResponse = response;
+      _isLoading = false;
+      _controller.clear();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Gemini AI Assistant"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Тут пізніше додамо вихід з акаунту
-              Navigator.pushReplacementNamed(context, '/');
-            },
-          )
-        ],
-      ),
-      body: Center(
+      appBar: AppBar(title: const Text("Gemini Assistant")),
+      body: Padding(
+        padding: const EdgeInsets.all(20.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              "Привіт! Натисни на мікрофон, щоб поговорити",
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
+            Expanded(
+              child: SingleChildScrollView(
+                child: Text(_aiResponse, style: const TextStyle(fontSize: 18)),
+              ),
             ),
-            const SizedBox(height: 50),
-            // Велика кнопка для голосу (поки що просто дизайн)
-            FloatingActionButton.large(
-              onPressed: () {
-                print("Слухаю...");
-              },
-              child: const Icon(Icons.mic, size: 50),
+            if (_isLoading) const CircularProgressIndicator(),
+            TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                hintText: "Запитай щось...",
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: _askGemini,
+                ),
+              ),
             ),
           ],
         ),
