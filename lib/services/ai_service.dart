@@ -2,7 +2,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter/services.dart';
 
 class AIService {
-  final String _apiKey = "AIzaSyBSQJOh_pd94vdau6y8gjkgc5EwOfbxluE";
+  final String _apiKey = "";
   static const platform = MethodChannel('com.example.app/system_commands');
 
   // Використовуємо GenerativeModel? (з знаком питання), щоб уникнути помилок ініціалізації
