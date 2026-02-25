@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
+import '../controllers/auth_service.dart';
 import 'home_screen.dart';
 import 'register_screen.dart';
 
@@ -43,12 +43,20 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TextField(controller: _emailController, decoration: const InputDecoration(labelText: "Електронна пошта")),
-            TextField(controller: _passController, decoration: const InputDecoration(labelText: "Пароль"), obscureText: true),
+            TextField(
+                controller: _emailController,
+                decoration:
+                    const InputDecoration(labelText: "Електронна пошта")),
+            TextField(
+                controller: _passController,
+                decoration: const InputDecoration(labelText: "Пароль"),
+                obscureText: true),
             const SizedBox(height: 20),
-            ElevatedButton(onPressed: _handleLogin, child: const Text("Увійти")),
+            ElevatedButton(
+                onPressed: _handleLogin, child: const Text("Увійти")),
             TextButton(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => RegisterScreen())),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (context) => RegisterScreen())),
               child: const Text("Немає акаунта? Зареєструватися"),
             ),
           ],
