@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Імпорт ядра Firebase
-import 'UI/register_screen.dart'; // Твій файл з реєстрацією
+// Твій файл з реєстрацією
 import 'UI/login_screen.dart';
 
 void main() async {

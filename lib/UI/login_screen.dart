@@ -55,8 +55,10 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton(
                 onPressed: _handleLogin, child: const Text("Увійти")),
             TextButton(
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (context) => RegisterScreen())),
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const RegisterScreen())),
               child: const Text("Немає акаунта? Зареєструватися"),
             ),
           ],
