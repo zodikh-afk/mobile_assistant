@@ -30,9 +30,10 @@ class AuthService {
       }
       return "Успіх";
     } catch (e) {
-      return e.toString(); 
+      return e.toString();
     }
   }
+
   Future<String?> loginUser({
     required String email,
     required String password,
@@ -47,5 +48,9 @@ class AuthService {
     } catch (e) {
       return e.toString(); // Наприклад: "wrong-password" або "user-not-found"
     }
+  }
+
+  Future<void> signOut() async {
+    await _auth.signOut();
   }
 }
