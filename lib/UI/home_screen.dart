@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../business_logic/ai_service.dart';
-import '../controllers/auth_service.dart'; // Додано для виходу
-import 'login_screen.dart'; // Додано для переходу при виході
+import 'login_screen.dart';
 import 'settings_screen.dart';
+
+import '../controllers/auth_controller.dart';
+import '../repositories/auth_repository.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,10 +15,19 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AIService _aiService = AIService();
-  final AuthService _authService = AuthService(); // Ініціалізація сервісу
   final TextEditingController _controller = TextEditingController();
+
+  late final AuthController _authController;
+
   String _aiResponse = "Напиши мені щось!";
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final authRepository = AuthRepository();
+    _authController = AuthController(authRepository);
+  }
 
   void _askGemini() async {
     setState(() {
@@ -33,13 +44,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleLogout() async {
-    // Тут ми викликаємо метод виходу (припускаю, що він у тебе буде так називатися)
-    // await _authService.signOut();
+    await _authController.handleLogout();
 
     if (!mounted) return;
 
-    // Перекидаємо на екран логіну та очищаємо історію навігації,
-    // щоб користувач не міг повернутися назад кнопкою "Back"
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -51,14 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Gemini Assistant")),
-      // Додаємо шторку (Drawer)
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
             const DrawerHeader(
               decoration: BoxDecoration(
-                color: Colors.blue, // Колір шапки меню
+                color: Colors.blue,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,14 +84,14 @@ class _HomeScreenState extends State<HomeScreen> {
               leading: const Icon(Icons.settings),
               title: const Text('Налаштування'),
               onTap: () {
-                Navigator.pop(context); // Закриваємо шторку
+                Navigator.pop(context);
                 Navigator.push(
                     context,
                     MaterialPageRoute(
                         builder: (context) => const SettingsScreen()));
               },
             ),
-            const Divider(), // Розділювач
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.logout, color: Colors.red),
               title: const Text('Вийти', style: TextStyle(color: Colors.red)),

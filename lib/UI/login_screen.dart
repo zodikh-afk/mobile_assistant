@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../controllers/auth_service.dart';
+
 import 'home_screen.dart';
 import 'register_screen.dart';
+
+import '../controllers/connectivity_controller.dart';
+import '../controllers/input_validator_controller.dart';
+import '../controllers/auth_controller.dart';
+import '../repositories/auth_repository.dart';
+import '../domain/view_models/login_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,7 +20,11 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passController = TextEditingController();
-  final AuthService _authService = AuthService();
+
+  final ConnectivityController _connectivity = ConnectivityController();
+  final InputValidatorController _validator = InputValidatorController();
+
+  late final AuthController _authController;
 
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -22,10 +32,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
+    final authRepository = AuthRepository();
+    _authController = AuthController(authRepository);
+
     _loadSavedCredentials();
   }
 
-  // Завантажуємо збережені дані при відкритті екрану
   void _loadSavedCredentials() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -38,23 +50,49 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passController.text.trim();
+
+    final emailError = _validator.validateEmail(email);
+    final passError = _validator.validatePassword(password);
+
+    if (emailError != null || passError != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(emailError ?? passError!)),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
-    final result = await _authService.loginUser(
-      email: _emailController.text.trim(),
-      password: _passController.text.trim(),
+    bool hasInternet = await _connectivity.hasInternetConnection();
+    if (!hasInternet) {
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text("Відсутнє підключення до інтернету. Перевірте мережу.")),
+      );
+      return;
+    }
+
+    final viewModel = LoginViewModel(
+      email: email,
+      password: password,
     );
+
+    final result = await _authController.handleLogin(viewModel);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
 
     if (result == "Успіх") {
-      // Логіка збереження даних, якщо галочка стоїть
       SharedPreferences prefs = await SharedPreferences.getInstance();
       if (_rememberMe) {
         await prefs.setBool('remember_me', true);
-        await prefs.setString('saved_email', _emailController.text.trim());
-        await prefs.setString('saved_password', _passController.text.trim());
+        await prefs.setString('saved_email', email);
+        await prefs.setString('saved_password', password);
       } else {
         await prefs.setBool('remember_me', false);
         await prefs.remove('saved_email');
@@ -93,8 +131,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: "Пароль", prefixIcon: Icon(Icons.lock)),
                 obscureText: true),
             const SizedBox(height: 10),
-
-            // Чекбокс "Запам'ятати мене"
             CheckboxListTile(
               title: const Text("Запам'ятати мене"),
               value: _rememberMe,
@@ -105,7 +141,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 });
               },
             ),
-
             const SizedBox(height: 20),
             _isLoading
                 ? const CircularProgressIndicator()
