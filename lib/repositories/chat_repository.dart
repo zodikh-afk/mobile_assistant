@@ -57,4 +57,14 @@ class ChatRepository {
             ))
         .toList();
   }
+
+  // ТУТ ВІН МАЄ БУТИ (Окремий метод класу)
+  Future<void> deleteChat(int chatId) async {
+    final db = await dbHelper.database;
+    await db.delete(
+      'chat_sessions',
+      where: 'id = ?',
+      whereArgs: [chatId],
+    );
+  }
 }

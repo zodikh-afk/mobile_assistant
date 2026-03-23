@@ -7,7 +7,6 @@ class ChatController {
 
   ChatController(this._repository);
 
-  // Отримуємо чати і одразу перетворюємо їх у ViewModel для екрану
   Future<List<ChatViewModel>> loadChatHistory() async {
     try {
       final models = await _repository.getAllChats();
@@ -26,6 +25,15 @@ class ChatController {
     } catch (e) {
       print("Помилка створення чату: $e");
       return null;
+    }
+  }
+
+  // Видалення чату через контролер
+  Future<void> deleteChat(int chatId) async {
+    try {
+      await _repository.deleteChat(chatId);
+    } catch (e) {
+      print("Помилка видалення чату: $e");
     }
   }
 
