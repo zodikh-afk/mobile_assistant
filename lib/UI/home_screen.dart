@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import '../business_logic/ai_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../business_logic/services/ai_service.dart';
 import '../business_logic/services/assistant_manager.dart';
 import '../business_logic/commands/app_command_service.dart';
+import '../business_logic/services/voice_service.dart'; // Додали імпорт VoiceService
 import 'login_screen.dart';
 import 'settings_screen.dart';
 
@@ -30,12 +32,19 @@ class _HomeScreenState extends State<HomeScreen> {
   late final AssistantManager _assistantManager;
   late final ProfileController _profileController;
 
+  // Додаємо сервіс голосу
+  late final VoiceService _voiceService;
+
   List<ChatViewModel> _chatHistory = [];
   List<MessageModel> _messages = [];
 
   ChatViewModel? _currentChat;
   bool _isLoading = false;
   String _userName = "Завантаження...";
+
+  // Стани для мікрофона
+  bool _isVoiceInitialized = false;
+  bool _isListeningMode = false;
 
   @override
   void initState() {
@@ -50,30 +59,40 @@ class _HomeScreenState extends State<HomeScreen> {
     _chatController = ChatController(ChatRepository());
     _profileController = ProfileController();
 
+    _voiceService = VoiceService();
+
     // Запуск початкової логіки додатка
     _initializeAppData();
+    _initVoiceService();
   }
 
-  // Метод для початкового налаштування при вході
+  // Ініціалізуємо мікрофон при старті
+  void _initVoiceService() async {
+    _isVoiceInitialized = await _voiceService.initSpeech();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> requestOverlayPermission() async {
+    if (!await Permission.systemAlertWindow.isGranted) {
+      // Це відкриє системне вікно налаштувань "Показувати поверх інших додатків"
+      await Permission.systemAlertWindow.request();
+    }
+  }
+
   void _initializeAppData() async {
-    // 1. Отримуємо логін користувача
     final name = await _profileController.getUsername();
     if (mounted && name != null) {
       setState(() => _userName = name);
     }
 
-    // 2. Завантажуємо історію чатів
     final history = await _chatController.loadChatHistory();
     if (mounted) {
       setState(() => _chatHistory = history);
     }
 
-    // 3. Автоматизація чату при вході
     if (history.isEmpty) {
-      // Якщо чатів немає — створюємо новий автоматично
       _autoCreateFirstChat();
     } else {
-      // Якщо чати є — відкриваємо останній
       _selectChat(history.first);
     }
   }
@@ -133,23 +152,64 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _askGemini() async {
-    if (_textController.text.isEmpty || _currentChat == null || _isLoading) {
+  // Логіка перемикання автономного голосового режиму
+  void _toggleVoiceMode() {
+    if (!_isVoiceInitialized) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Мікрофон недоступний. Перевірте дозволи.")),
+      );
       return;
     }
 
-    FocusScope.of(context).unfocus();
-    final userText = _textController.text;
+    if (_isListeningMode) {
+      // Вимикаємо
+      _voiceService.stopAutonomousListening();
+      setState(() => _isListeningMode = false);
+    } else {
+      // Вмикаємо
+      setState(() => _isListeningMode = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Автономний режим увімкнено. Я вас слухаю.")),
+      );
 
-    await _chatController.saveMessage(_currentChat!.id, userText, true);
+      _voiceService.startAutonomousListening(
+        onResult: (text) {
+          // Коли користувач закінчив фразу, відправляємо її на обробку
+          if (text.isNotEmpty) {
+            _processInput(text);
+          }
+        },
+      );
+    }
+  }
+
+  // Викликається кнопкою "Відправити" (текстовий ввід)
+  void _askGemini() {
+    final userText = _textController.text;
+    if (userText.isEmpty) return;
+
+    _textController.clear();
+    _processInput(userText);
+  }
+
+  // Універсальний метод обробки запиту (і для тексту, і для голосу)
+  void _processInput(String text) async {
+    if (_currentChat == null || _isLoading) return;
+
+    FocusScope.of(context).unfocus();
+
+    await _chatController.saveMessage(_currentChat!.id, text, true);
 
     setState(() {
       _isLoading = true;
-      _messages.add(MessageModel(text: userText, isUser: true));
-      _textController.clear();
+      _messages.add(MessageModel(text: text, isUser: true));
     });
 
-    final aiResponse = await _assistantManager.processRequest(userText);
+    // Тут магія: AssistantManager сам вирішить, чи це команда, чи запит до Gemini
+    final aiResponse = await _assistantManager.processRequest(text);
+
     await _chatController.saveMessage(_currentChat!.id, aiResponse, false);
 
     if (mounted) {
@@ -161,6 +221,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _handleLogout() async {
+    // Якщо виходимо, варто зупинити мікрофон
+    if (_isListeningMode) {
+      _voiceService.stopAutonomousListening();
+    }
+
     await _authController.handleLogout();
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -171,23 +236,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void dispose() {
+    if (_isListeningMode) {
+      _voiceService.stopAutonomousListening();
+    }
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(_currentChat?.displayTitle ?? "Gemini Assistant"),
       ),
       drawer: Drawer(
+        // ... (Твій код Drawer залишається без змін)
         child: SafeArea(
           child: Column(
             children: [
-              // Шапка з логіном користувача
               UserAccountsDrawerHeader(
                 accountName: Text(
                   _userName,
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-                accountEmail: null, // Приховуємо пошту за запитом
+                accountEmail: null,
                 currentAccountPicture: const CircleAvatar(
                   backgroundColor: Colors.white,
                   child: Icon(Icons.person, size: 40, color: Colors.blueAccent),
@@ -303,14 +377,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Кнопка мікрофона тепер працює як перемикач
                     IconButton(
-                      icon: const Icon(Icons.mic_none),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text("Голосовий ввід скоро з'явиться!")),
-                        );
-                      },
+                      icon: Icon(
+                        _isListeningMode ? Icons.mic : Icons.mic_none,
+                        color: _isListeningMode ? Colors.red : Colors.grey,
+                      ),
+                      onPressed: _toggleVoiceMode,
                     ),
                     IconButton(
                       icon: Icon(

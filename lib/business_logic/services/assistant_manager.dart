@@ -1,4 +1,4 @@
-import '../../business_logic/ai_service.dart';
+import 'ai_service.dart';
 import '../commands/base_command.dart';
 
 class AssistantManager {
