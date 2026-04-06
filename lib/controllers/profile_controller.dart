@@ -1,26 +1,15 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../business_logic/services/profile_service.dart';
+import '../repositories/profile_repository.dart';
 
 class ProfileController {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  late final ProfileService _profileService;
 
-  // Отримання імені користувача
-  Future<String?> getUsername() async {
-    try {
-      final String uid = _auth.currentUser?.uid ?? "";
-      if (uid.isEmpty) return null;
+  ProfileController() {
+    final repository = ProfileRepository();
+    _profileService = ProfileService(repository);
+  }
 
-      // Шукаємо документ користувача в колекції 'users' за його UID
-      DocumentSnapshot doc =
-          await _firestore.collection('users').doc(uid).get();
-
-      if (doc.exists) {
-        return doc.get('username') as String?;
-      }
-    } catch (e) {
-      print("Помилка завантаження профілю: $e");
-    }
-    return null;
+  Future<String> getUsername() async {
+    return await _profileService.getUsername();
   }
 }

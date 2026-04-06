@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../controllers/settings_controller.dart';
 
 import 'home_screen.dart';
 import 'register_screen.dart';
@@ -7,7 +7,7 @@ import 'register_screen.dart';
 import '../controllers/connectivity_controller.dart';
 import '../controllers/input_validator_controller.dart';
 import '../controllers/auth_controller.dart';
-import '../repositories/auth_repository.dart';
+
 import '../domain/view_models/login_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -25,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final InputValidatorController _validator = InputValidatorController();
 
   late final AuthController _authController;
+  late final SettingsController _settingsController;
 
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -32,21 +33,23 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    final authRepository = AuthRepository();
-    _authController = AuthController(authRepository);
+    _authController = AuthController();
+    _settingsController = SettingsController(); // Ініціалізуємо
 
     _loadSavedCredentials();
   }
 
   void _loadSavedCredentials() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _rememberMe = prefs.getBool('remember_me') ?? false;
-      if (_rememberMe) {
-        _emailController.text = prefs.getString('saved_email') ?? '';
-        _passController.text = prefs.getString('saved_password') ?? '';
-      }
-    });
+    // Екран більше не знає про SharedPreferences!
+    final credentials = await _settingsController.getSavedCredentials();
+
+    if (credentials.isNotEmpty) {
+      setState(() {
+        _rememberMe = true;
+        _emailController.text = credentials['email']!;
+        _passController.text = credentials['password']!;
+      });
+    }
   }
 
   void _handleLogin() async {
@@ -88,15 +91,11 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _isLoading = false);
 
     if (result == "Успіх") {
-      SharedPreferences prefs = await SharedPreferences.getInstance();
+      // Використовуємо контролер замість SharedPreferences
       if (_rememberMe) {
-        await prefs.setBool('remember_me', true);
-        await prefs.setString('saved_email', email);
-        await prefs.setString('saved_password', password);
+        await _settingsController.saveCredentials(email, password);
       } else {
-        await prefs.setBool('remember_me', false);
-        await prefs.remove('saved_email');
-        await prefs.remove('saved_password');
+        await _settingsController.clearSavedAuthData();
       }
 
       Navigator.pushReplacement(

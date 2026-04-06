@@ -1,17 +1,21 @@
 import '../domain/view_models/register_view_model.dart';
-import '../repositories/auth_repository.dart';
 import '../domain/view_models/login_view_model.dart';
+import '../business_logic/services/auth_service.dart';
+import '../repositories/auth_repository.dart';
 
 class AuthController {
-  final AuthRepository _repository;
+  late final AuthService _authService;
 
-  AuthController(this._repository);
+  // Конструктор без аргументів — сам створює все необхідне
+  AuthController() {
+    final authRepository = AuthRepository();
+    _authService = AuthService(authRepository);
+  }
 
   Future<String> handleRegistration(RegisterViewModel viewModel) async {
     try {
-      await _repository.register(
+      await _authService.register(
           viewModel.email, viewModel.password, viewModel.username);
-
       return "Успіх";
     } catch (e) {
       return e.toString();
@@ -20,7 +24,7 @@ class AuthController {
 
   Future<String> handleLogin(LoginViewModel viewModel) async {
     try {
-      await _repository.login(viewModel.email, viewModel.password);
+      await _authService.login(viewModel.email, viewModel.password);
       return "Успіх";
     } catch (e) {
       return e.toString();
@@ -29,7 +33,7 @@ class AuthController {
 
   Future<void> handleLogout() async {
     try {
-      await _repository.logout();
+      await _authService.logout();
     } catch (e) {
       print("Помилка при виході: $e");
     }

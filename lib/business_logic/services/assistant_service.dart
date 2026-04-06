@@ -1,11 +1,11 @@
 import 'ai_service.dart';
 import '../commands/base_command.dart';
 
-class AssistantManager {
+class AssistantService {
   final AIService _geminiService;
   final List<BaseCommand> _commands;
 
-  AssistantManager(this._geminiService, this._commands);
+  AssistantService(this._geminiService, this._commands);
 
   Future<String> processRequest(String text) async {
     final cleanText = text.trim();

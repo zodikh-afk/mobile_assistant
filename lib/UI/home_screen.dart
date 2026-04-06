@@ -1,21 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import '../business_logic/services/ai_service.dart';
-import '../business_logic/services/assistant_manager.dart';
-import '../business_logic/commands/app_command_service.dart';
-import '../business_logic/services/voice_service.dart'; // Додали імпорт VoiceService
+
 import 'login_screen.dart';
 import 'settings_screen.dart';
 
 import '../controllers/auth_controller.dart';
-import '../repositories/auth_repository.dart';
-
-import '../controllers/chat_controller.dart';
-import '../repositories/chat_repository.dart';
-import '../domain/view_models/chat_view_model.dart';
-import '../domain/models/message_model.dart';
-
 import '../controllers/profile_controller.dart';
+import '../controllers/chat_controller.dart';
+import '../controllers/voice_controller.dart';
+
+import '../domain/view_models/chat_view_model.dart';
+import '../domain/view_models/message_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,20 +24,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   late final AuthController _authController;
   late final ChatController _chatController;
-  late final AssistantManager _assistantManager;
   late final ProfileController _profileController;
-
-  // Додаємо сервіс голосу
-  late final VoiceService _voiceService;
+  late final VoiceController _voiceController;
 
   List<ChatViewModel> _chatHistory = [];
-  List<MessageModel> _messages = [];
+  List<MessageViewModel> _messages = [];
 
   ChatViewModel? _currentChat;
   bool _isLoading = false;
   String _userName = "Завантаження...";
 
-  // Стани для мікрофона
   bool _isVoiceInitialized = false;
   bool _isListeningMode = false;
 
@@ -50,39 +41,34 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
 
-    // Ініціалізація сервісів та контролерів
-    final aiService = AIService();
-    final commands = [AppCommandService()];
-
-    _assistantManager = AssistantManager(aiService, commands);
-    _authController = AuthController(AuthRepository());
-    _chatController = ChatController(ChatRepository());
+    _authController = AuthController();
     _profileController = ProfileController();
+    _chatController = ChatController();
+    _voiceController = VoiceController();
 
-    _voiceService = VoiceService();
-
-    // Запуск початкової логіки додатка
-    _initializeAppData();
     _initVoiceService();
+    _initializeAppData();
   }
 
-  // Ініціалізуємо мікрофон при старті
   void _initVoiceService() async {
-    _isVoiceInitialized = await _voiceService.initSpeech();
+    _isVoiceInitialized = await _voiceController.initSpeech();
     if (mounted) setState(() {});
   }
 
   Future<void> requestOverlayPermission() async {
     if (!await Permission.systemAlertWindow.isGranted) {
-      // Це відкриє системне вікно налаштувань "Показувати поверх інших додатків"
       await Permission.systemAlertWindow.request();
     }
   }
 
   void _initializeAppData() async {
     final name = await _profileController.getUsername();
-    if (mounted && name != null) {
-      setState(() => _userName = name);
+
+    // 2. Гарантовано оновлюємо UI
+    if (mounted) {
+      setState(() {
+        _userName = name;
+      });
     }
 
     final history = await _chatController.loadChatHistory();
@@ -152,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Логіка перемикання автономного голосового режиму
   void _toggleVoiceMode() {
     if (!_isVoiceInitialized) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,20 +148,17 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (_isListeningMode) {
-      // Вимикаємо
-      _voiceService.stopAutonomousListening();
+      _voiceController.stopListening();
       setState(() => _isListeningMode = false);
     } else {
-      // Вмикаємо
       setState(() => _isListeningMode = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text("Автономний режим увімкнено. Я вас слухаю.")),
       );
 
-      _voiceService.startAutonomousListening(
-        onResult: (text) {
-          // Коли користувач закінчив фразу, відправляємо її на обробку
+      _voiceController.startListening(
+        (text) {
           if (text.isNotEmpty) {
             _processInput(text);
           }
@@ -185,45 +167,38 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Викликається кнопкою "Відправити" (текстовий ввід)
   void _askGemini() {
-    final userText = _textController.text;
-    if (userText.isEmpty) return;
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
 
     _textController.clear();
-    _processInput(userText);
+    _processInput(text);
   }
 
-  // Універсальний метод обробки запиту (і для тексту, і для голосу)
   void _processInput(String text) async {
     if (_currentChat == null || _isLoading) return;
 
     FocusScope.of(context).unfocus();
 
-    await _chatController.saveMessage(_currentChat!.id, text, true);
-
     setState(() {
       _isLoading = true;
-      _messages.add(MessageModel(text: text, isUser: true));
+      _messages.add(MessageViewModel(text: text, isUser: true));
     });
 
-    // Тут магія: AssistantManager сам вирішить, чи це команда, чи запит до Gemini
-    final aiResponse = await _assistantManager.processRequest(text);
-
-    await _chatController.saveMessage(_currentChat!.id, aiResponse, false);
+    final aiResponse =
+        await _chatController.handleUserMessage(_currentChat!.id, text);
 
     if (mounted) {
       setState(() {
-        _messages.add(MessageModel(text: aiResponse, isUser: false));
+        _messages.add(MessageViewModel(text: aiResponse, isUser: false));
         _isLoading = false;
       });
     }
   }
 
   void _handleLogout() async {
-    // Якщо виходимо, варто зупинити мікрофон
     if (_isListeningMode) {
-      _voiceService.stopAutonomousListening();
+      _voiceController.stopListening();
     }
 
     await _authController.handleLogout();
@@ -238,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     if (_isListeningMode) {
-      _voiceService.stopAutonomousListening();
+      _voiceController.stopListening();
     }
     _textController.dispose();
     super.dispose();

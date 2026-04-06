@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import '../controllers/connectivity_controller.dart';
 import '../controllers/input_validator_controller.dart';
-
 import '../controllers/auth_controller.dart';
-import '../repositories/auth_repository.dart';
+
 import '../domain/view_models/register_view_model.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -29,8 +28,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
-    final authRepository = AuthRepository();
-    _authController = AuthController(authRepository);
+    _authController = AuthController();
   }
 
   void _handleRegister() async {

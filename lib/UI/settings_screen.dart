@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../controllers/settings_controller.dart';
+import '../controllers/theme_controller.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -25,16 +26,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  void _toggleTheme(bool value) async {
-    await _settingsController.saveThemeMode(value);
-    setState(() {
-      _isDarkMode = value;
-    });
-    // Примітка: щоб тема реально змінювалася у всьому додатку,
-    // потрібно використовувати Provider або інший стейт-менеджер у main.dart,
-    // але для курсової візуальний перемикач з логікою в контролері — це вже великий плюс.
-  }
-
   void _clearAuthData() async {
     await _settingsController.clearSavedAuthData();
     if (!mounted) return;
@@ -58,10 +49,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     color: Colors.blue)),
           ),
           SwitchListTile(
-            title: const Text("Темна тема"),
-            secondary: const Icon(Icons.dark_mode),
+            title: const Text('Темна тема'),
             value: _isDarkMode,
-            onChanged: _toggleTheme,
+            onChanged: (bool value) async {
+              setState(() {
+                _isDarkMode = value;
+              });
+
+              await _settingsController.setThemeMode(value);
+
+              ThemeController.toggleTheme(value);
+            },
           ),
           const Divider(),
           const Padding(

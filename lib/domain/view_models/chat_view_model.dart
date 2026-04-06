@@ -9,7 +9,7 @@ class ChatViewModel {
   factory ChatViewModel.fromModel(ChatModel model) {
     return ChatViewModel(
       id: model.id,
-      displayTitle: model.title, // Тут можна додати обрізку довгого тексту
+      displayTitle: model.title,
     );
   }
 }
